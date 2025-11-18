@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角版2048</title>
+    <style>
+        .clip-triangle-up {
+            width: 100px;
+            height: 86.6025px;
+            background: var(--tri-up-bg, linear-gradient(45deg, #EEE4DA, #EEE4DA));
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+        .clip-triangle-down {
+            width: 100px;
+            height: 86.6025px;
+            background: var(--tri-down-bg, linear-gradient(45deg, #d6c7b8, #d6c7b8));
+            clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+            transform: translateY(-400%);
+        }
+        .small-triangle {
+            position: relative;
+            width: 80%;
+            height: 80%;
+            background-color: #746e26;
+            left: 10%;
+            text-align: center;
+        }
+        .triangle-container {
+            margin: 0px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .big-triangle {
+            display: grid;
+            grid-template-rows: repeat(4, 86.6025px);
+            justify-content: center;
+        }
+        .triangle-row {
+            display: flex;
+            justify-content: center;
+        }
+        .big-triangle-down {
+            display: grid;
+            grid-template-rows: repeat(3, 86.6025px);
+            justify-content: center;
+        }
+        :root { 
+            --board-shift: 15vh;
+            --tri-up-bg: linear-gradient(45deg, #EEE4DA, #EEE4DA);
+            --tri-down-bg: linear-gradient(45deg, #d6c7b8, #d6c7b8);
+        }
+        /* board wrapper to shift both triangle groups together */
+        #board {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateY(var(--board-shift));
+        }
+        .p {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 30px;
+        }
+        .up {
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            top: 14%;
+            line-height: 80px;
+        }
+        .down {
+            clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+            top: 7%;
+            line-height: 50px;
+        }
+        /* score panel - vertical card style */
+        #score-panel {
+            position: fixed;
+            right: 16px;
+            top: 16px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 12px;
+            border-radius: 10px;
+            font-family: Arial, Helvetica, sans-serif;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+            width: 140px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        }
+        #score-panel .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        #score-panel .label {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+        #score-panel .value {
+            background: rgba(255,255,255,0.92);
+            color: #222;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            min-width: 48px;
+            text-align: center;
+            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
+        }
+        #score-panel .controls {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        /* theme toggle icon visibility: show sun by default, moon only in dark-theme */
+        #theme-toggle .icon { width: 18px; height: 18px; display: inline-block; }
+        /* default (light): show sun, hide moon */
+        #theme-toggle .icon-sun { display: inline-block !important; }
+        #theme-toggle .icon-moon { display: none !important; }
+        /* dark theme: show moon, hide sun */
+        .dark-theme #theme-toggle .icon-sun { display: none !important; }
+        .dark-theme #theme-toggle .icon-moon { display: inline-block !important; }
+        /* theme toggle button (visual upgrade) */
+        #theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid rgba(11,18,32,0.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,250,0.92));
+            cursor: pointer;
+            padding: 6px;
+            margin-left: 6px;
+            color: #0b1220;
+            box-shadow: 0 8px 24px rgba(11,18,32,0.06);
+            transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+        #theme-toggle:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(11,18,32,0.08); }
+        .dark-theme #theme-toggle { background: linear-gradient(180deg, rgba(28,30,34,0.9), rgba(22,24,28,0.88)); color: #e6eefb; border: 1px solid rgba(255,255,255,0.04); box-shadow: 0 10px 30px rgba(2,6,23,0.5); }
+        /* hide/show board icon button */
+        #toggle-board-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.92);
+            cursor: pointer;
+            padding: 6px;
+            box-shadow: 0 6px 18px rgba(11,18,32,0.06);
+            transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+        #toggle-board-btn { color: #0b1220; }
+        .dark-theme #toggle-board-btn { background: rgba(255,255,255,0.04); color: #e6eefb; box-shadow: 0 10px 28px rgba(2,6,23,0.5); }
+        #toggle-board-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(11,18,32,0.08); }
+        #toggle-board-btn:active { transform: translateY(0); }
+        #toggle-board-btn .icon-eye-off { display: none; }
+        #toggle-board-btn.is-hidden .icon-eye { display: none; }
+        #toggle-board-btn.is-hidden .icon-eye-off { display: inline-block; }
+        /* icon size already set above */
+        #score-panel button {
+            background: #fff;
+            color: #333;
+            border: none;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        /* highlight animation when best updates */
+        @keyframes pulseBest {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(255,215,0,0.0); }
+            40% { transform: scale(1.06); box-shadow: 0 8px 20px rgba(255,215,0,0.25); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(255,215,0,0.0); }
+        }
+        .best-highlight {
+            animation: pulseBest 800ms ease-in-out;
+            border-radius: 6px;
+        }
+        /* tile animations: spawn (pop) and merge (pulse) */
+        .small-triangle { transform-origin: 50% 50%; }
+        @keyframes popIn {
+            0% { transform: scale(0.2); opacity: 0; }
+            60% { transform: scale(1.12); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        @keyframes mergePulse {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.26); }
+            100% { transform: scale(1); }
+        }
+        .tile-pop {
+            animation: popIn 360ms cubic-bezier(.2,.8,.2,1);
+        }
+        .tile-merge {
+            animation: mergePulse 380ms cubic-bezier(.2,.8,.2,1);
+        }
+        /* game-over overlay */
+        #game-over-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 260ms ease, visibility 260ms ease;
+        }
+        #game-over-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        #game-over-card {
+            background: #fff;
+            color: #222;
+            padding: 20px 24px;
+            border-radius: 12px;
+            min-width: 240px;
+            text-align: center;
+            box-shadow: 0 12px 34px rgba(0,0,0,0.4);
+            transform: translateY(-8px) scale(0.98);
+            transition: transform 280ms cubic-bezier(.2,.9,.2,1);
+        }
+        #game-over-overlay.show #game-over-card {
+            transform: translateY(0) scale(1);
+        }
+        #game-over-card h2 { margin: 0 0 8px; font-size: 20px; }
+        #game-over-card p { margin: 0 0 12px; color: #555; }
+        #game-over-card button { padding: 8px 12px; border-radius: 8px; border: none; background: #2b8aef; color: #fff; cursor: pointer; font-weight: 700; }
+        /* victory overlay (2048) */
+        @keyframes victoryPop {
+            0% { transform: scale(0.6); opacity: 0; }
+            60% { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        #victory-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /*background: rgba(0,0,0,0.55);*/
+            z-index: 3000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 220ms ease, visibility 220ms ease;
+            transform: translateY(-10%);
+        }
+        #victory-overlay.show { visibility: visible; opacity: 1; }
+        #victory-card {
+            background: white;
+            padding: 18px 22px;
+            border-radius: 12px;
+            min-width: 320px;
+            text-align: center;
+            box-shadow: 0 18px 46px rgba(0,0,0,0.45);
+            transform-origin: center center;
+            animation: victoryPop 420ms cubic-bezier(.2,.9,.2,1) both;
+        }
+        #victory-card img { width: 96px; height: 96px; display: block; margin: 0 auto 12px; }
+        #victory-card h2 { margin: 6px 0 8px; font-size: 22px; }
+        #victory-card p { margin: 0 0 12px; color: #444; }
+        #victory-card .victory-actions { display:flex; gap:12px; justify-content:center; }
+        #victory-card .victory-actions button { padding: 8px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+        #victory-card .btn-end { background:#e74c3c; color:#fff; }
+        #victory-card .btn-continue { background:#2ecc71; color:#fff; }
+        /* rules panel (collapsible) */
+        details#rules-panel {
+            position: fixed;
+            left: 16px;
+            top: 16px;
+            width: 300px;
+            background: rgba(255,255,255,0.98);
+            color: #222;
+            border-radius: 10px;
+            padding: 6px 8px;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+            z-index: 1000;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 16px;
+        }
+        details#rules-panel summary {
+            list-style: none;
+            cursor: pointer;
+            font-weight: 800;
+            padding: 6px 4px;
+            border-radius: 6px;
+            display: block;
+            user-select: none;
+        }
+        details#rules-panel summary::-webkit-details-marker { display: none; }
+        details#rules-panel[open] { background: linear-gradient(180deg, rgba(255,250,240,0.98), rgba(255,255,255,0.98)); }
+        details#rules-panel .rules-body {
+            padding: 6px 4px 8px 4px;
+            color: #333;
+            line-height: 1.45;
+            max-height: 42vh;
+            overflow: auto;
+            font-size: 14px;
+        }
+        /* special glowing style for 2048 tile (stronger glow) */
+        @keyframes goldGlow {
+            0% {
+                box-shadow: 0 0 12px 6px rgba(255,215,0,0.75), 0 0 24px 10px rgba(255,200,50,0.45);
+                transform: scale(1);
+            }
+            45% {
+                box-shadow: 0 0 36px 16px rgba(255,215,0,0.95), 0 0 64px 28px rgba(255,180,40,0.7);
+                transform: scale(1.04);
+            }
+            100% {
+                box-shadow: 0 0 12px 6px rgba(255,215,0,0.75), 0 0 24px 10px rgba(255,200,50,0.45);
+                transform: scale(1);
+            }
+        }
+        .tile-2048 {
+            background: linear-gradient(135deg, #fff0a8 0%, #ffd14d 45%, #ffb400 100%) !important;
+            color: #1b1b1b !important;
+            box-shadow: 0 0 18px 8px rgba(255,215,0,0.85), 0 0 48px 20px rgba(255,190,30,0.6), inset 0 -6px 12px rgba(0,0,0,0.12);
+            animation: goldGlow 1.6s ease-in-out infinite;
+            transition: box-shadow 220ms ease, transform 220ms ease;
+        }
+        /* Background video(s): full-screen, behind content */
+        #bg-video, #bg-video-2 {
+            position: fixed;
+            inset: 0; /* top:0; right:0; bottom:0; left:0; */
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            pointer-events: none;
+            filter: brightness(0.55) saturate(1.05) contrast(1.02) blur(0.2px);
+        }
+        /* board show/hide transitions (fade + slight slide) */
+        #board {
+            transition: opacity 280ms ease, transform 280ms ease, max-height 280ms ease;
+            will-change: opacity, transform;
+            max-height: 2400px; /* large enough for board */
+            overflow: visible;
+        }
+        #board.board-hidden {
+            opacity: 0;
+            transform: translateY(8px) scale(0.997);
+            pointer-events: none;
+            max-height: 0;
+            overflow: hidden;
+        }
+        /* Hide background video when user prefers reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            #bg-video { display: none; }
+        }
+    </style>
+</head>
+    <body>
+    <!-- Background videos: wallpaper1 shown by default, wallpaper2 hidden until dark mode -->
+    <video id="bg-video" autoplay muted loop playsinline aria-hidden="true">
+        <source src="wallpaper1.mp4" type="video/mp4">
+    </video>
+    <video id="bg-video-2" autoplay muted loop playsinline aria-hidden="true" style="display:none;">
+        <source src="wallpaper2.mp4" type="video/mp4">
+    </video>
+    <div id="board">
+    <div class="triangle-container">
+        <div class="big-triangle">
+            <!-- container for dynamically generated upward triangles -->
+            <div id="up-triangles">
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory overlay (2048) -->
+    <div id="victory-overlay" role="dialog" aria-modal="true">
+        <div id="victory-card">
+            <h2>恭喜通关!</h2>
+            <img id="victory-img" src="guzhang.gif" alt="trophy" style="width: 480px; height: 270px;"/>
+            <p>你已生成 2048</p>
+            <div class="victory-actions">
+                <button id="victory-end" class="btn-end" type="button">结束游戏</button>
+                <button id="victory-continue" class="btn-continue" type="button">继续游戏</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="triangle-container">
+        <!-- container for dynamically generated downward triangles -->
+        <div id="down-triangles" class="big-triangle-down">
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Score panel -->
+    <div id="score-panel" aria-live="polite">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+                <button id="toggle-board-btn" type="button" title="隐藏/显示棋盘" aria-pressed="false">
+                    <!-- eye open -->
+                    <svg class="icon-eye" viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor" />
+                    </svg>
+                    <!-- eye closed / off -->
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.7 21.7 0 0 1 5.06-5.94" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M1 1l22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </button>
+            </div>
+            <div>
+                <!-- Theme toggle button (moved to panel header) -->
+                <button id="theme-toggle" aria-label="切换主题" title="切换主题" type="button">
+                    <!-- Sun icon -->
+                    <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" fill="#FFD54D" />
+                        <g stroke="#FFD54D" stroke-width="1.4" stroke-linecap="round">
+                            <path d="M12 2v2" />
+                            <path d="M12 20v2" />
+                            <path d="M4.22 4.22l1.42 1.42" />
+                            <path d="M18.36 18.36l1.42 1.42" />
+                            <path d="M2 12h2" />
+                            <path d="M20 12h2" />
+                            <path d="M4.22 19.78l1.42-1.42" />
+                            <path d="M18.36 5.64l1.42-1.42" />
+                        </g>
+                    </svg>
+                    <!-- Moon icon -->
+                    <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#cbd5e1" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="row"><div class="label">Score</div><div id="score-value" class="value">0</div></div>
+        <div class="row"><div class="label">Best</div><div id="best-value" class="value">0</div></div>
+        <div class="controls">
+            <!-- <button id="add-score-btn" type="button">+1</button> -->
+            <button id="reset-score-btn" type="button">Reset</button>
+        </div>
+    </div>
+
+    <!-- Collapsible Rules Panel -->
+    <details id="rules-panel" aria-label="游戏规则">
+        <summary>游戏规则</summary>
+        <div class="rules-body">
+            <!-- 占位规则文本；用户可自行修改为详细规则 -->
+            <p>该游戏为三角形版2048</p>
+            <p>使用“a、w、e、d、z、x”进行移动</p>
+            <p>按键a：向左下移动</p>
+            <p>按键w：向右上移动</p>
+            <p>按键e：向左上移动</p>
+            <p>按键d：向右下移动</p>
+            <p>按键z：水平向左移动</p>
+            <p>按键x：水平向右移动</p>
+            <p>合并相同的数字以获得更高的分数，合并规则与原版2048相同</p>
+        </div>
+    </details>
+
+    <!-- Game over overlay (hidden by default) -->
+    <div id="game-over-overlay" role="dialog" aria-modal="true">
+        <div id="game-over-card">
+            <h2>游戏结束</h2>
+            <p>没有可用的移动了。</p>
+            <p id="final-score" style="font-weight: bold;"></p>
+            <img src="wozuodeju.jpeg" alt="Game Over" width="200" height="200">
+            <br>
+            <button id="restart-btn" type="button">重新开始</button>
+        </div>
+    </div>
+
+    <!-- 引入脚本，build() 会在 DOMContentLoaded 时执行 -->
+    <script src="js.js"></script>
+</body>
+</html>
