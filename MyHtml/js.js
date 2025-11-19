@@ -1115,6 +1115,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
                 btn.title = hidden ? '显示棋盘' : '隐藏棋盘';
             }
+            // also hide/show the fixed bottom operation buttons to keep behavior in sync
+            try {
+                const ops = document.querySelector('.ops-row.fixed');
+                if (ops) {
+                    if (hidden) ops.classList.add('hidden');
+                    else ops.classList.remove('hidden');
+                    ops.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+                }
+            } catch (e) { /* ignore */ }
             if (!skipSave) {
                 try { localStorage.setItem(BOARD_KEY, hidden ? '1' : '0'); } catch (e) { /* ignore */ }
             }
@@ -1139,6 +1148,62 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleBoardBtn) toggleBoardBtn.addEventListener('click', toggleBoard);
     // load board hidden state after bindings
     loadBoardPref();
+    // Background brightness control: bind slider and persist preference
+    const BRIGHT_KEY = 'tri2048_bgBrightness';
+    function setBgBrightness(v) {
+        try {
+            const v1 = document.getElementById('bg-video');
+            const v2 = document.getElementById('bg-video-2');
+            const base = 'saturate(1.05) contrast(1.02) blur(0.2px)';
+            const filter = 'brightness(' + Number(v) + ') ' + base;
+            if (v1) v1.style.filter = filter;
+            if (v2) v2.style.filter = filter;
+        } catch (e) { /* ignore */ }
+    }
+    function loadBrightnessPref() {
+        try {
+            const v = localStorage.getItem(BRIGHT_KEY);
+            const n = v !== null ? parseFloat(v) : 1;
+            const val = isNaN(n) ? 1 : n;
+            setBgBrightness(val);
+            const s = document.getElementById('bg-brightness');
+            if (s) s.value = String(val);
+        } catch (e) { /* ignore */ }
+    }
+    // bind slider input
+    try {
+        const slider = document.getElementById('bg-brightness');
+        if (slider) {
+            slider.addEventListener('input', (ev) => {
+                try {
+                    const v = parseFloat(ev.target.value);
+                    setBgBrightness(isNaN(v) ? 1 : v);
+                    try { localStorage.setItem(BRIGHT_KEY, String(v)); } catch (e) { /* ignore */ }
+                } catch (e) { /* ignore */ }
+            });
+        }
+    } catch (e) { /* ignore */ }
+    loadBrightnessPref();
+    // Operation buttons binding: click a button to execute that operation and flash the button
+    try {
+        const opButtons = document.querySelectorAll('.op-button');
+        opButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (GAME_OVER) return;
+                const op = btn.getAttribute('data-op');
+                if (!op) return;
+                // perform the operation
+                dataUpdate(op);
+                build();
+                // visual flash
+                btn.classList.add('flash');
+                setTimeout(() => btn.classList.remove('flash'), 420);
+                // update state checks
+                checkGameState();
+                checkVictory();
+            });
+        });
+    } catch (e) { /* ignore */ }
 	} catch (e) {
 		console.error('build error:', e);
 	}
@@ -1152,4 +1217,15 @@ document.addEventListener('keydown', function(event){
     checkGameState();
     // after build check victory condition
     checkVictory();
+});
+
+// Flash corresponding op button on keyboard press (visual feedback)
+document.addEventListener('keydown', function(ev){
+    try {
+        const btn = document.querySelector('.op-button[data-op="' + ev.key + '"]');
+        if (btn) {
+            btn.classList.add('flash');
+            setTimeout(() => btn.classList.remove('flash'), 420);
+        }
+    } catch (e) { /* ignore */ }
 });

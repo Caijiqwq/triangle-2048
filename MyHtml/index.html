@@ -174,6 +174,79 @@
             font-weight: 600;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
+        /* operation buttons row (can be fixed to bottom using .fixed) */
+        .ops-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 18px;
+            margin-bottom: 8vh;
+        }
+        .ops-row.fixed {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 24px;
+            z-index: 1200;
+            margin: 0;
+            padding: 8px 12px;
+            background: transparent;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        /* hidden state for fixed ops row (used when board is hidden) */
+        .ops-row.fixed.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px) scale(0.98);
+            pointer-events: none;
+            transition: opacity 220ms ease, transform 220ms ease;
+        }
+        /* brightness slider styles */
+        .brightness-control {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: stretch;
+            margin-top: 8px;
+        }
+        .brightness-control label { font-size: 12px; opacity: 0.85; }
+        .brightness-slider { width: 100%; }
+        .ops-row-row { display:flex; gap:12px; align-items:center; justify-content:center; }
+        .ops-row-row.row-mid { gap:60px; }
+        /* offset top and bottom rows to create hex-like silhouette */
+        .ops-row-row.row-top { transform: translateX(0px); }
+        .ops-row-row.row-bot { transform: translateX(0px); }
+        .op-button {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffffff, #fafafa);
+            border: 1px solid rgba(11,18,32,0.06);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(11,18,32,0.06);
+            transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, color 160ms ease;
+            user-select: none;
+        }
+        .op-button:hover { transform: translateY(-4px); box-shadow: 0 16px 38px rgba(11,18,32,0.08); }
+        .op-button:active { transform: translateY(-2px); }
+        .op-button .label-sub { display: block; font-size: 12px; font-weight: 500; opacity: 0.7; }
+        .dark-theme .op-button { background: linear-gradient(180deg, rgba(28,30,34,0.86), rgba(22,24,28,0.86)); color: #e6eefb; border: 1px solid rgba(255,255,255,0.04); box-shadow: 0 12px 30px rgba(2,6,23,0.45); }
+        /* flash animation when a button is pressed */
+        @keyframes opFlash {
+            0% { transform: scale(1); box-shadow: 0 8px 20px rgba(43,138,239,0.0); }
+            30% { transform: scale(1.06); box-shadow: 0 18px 46px rgba(43,138,239,0.22); }
+            100% { transform: scale(1); box-shadow: 0 8px 20px rgba(43,138,239,0.0); }
+        }
+        .op-button.flash { animation: opFlash 420ms cubic-bezier(.2,.9,.2,1); }
         /* highlight animation when best updates */
         @keyframes pulseBest {
             0% { transform: scale(1); box-shadow: 0 0 0 rgba(255,215,0,0.0); }
@@ -338,7 +411,7 @@
             object-fit: cover;
             z-index: -1;
             pointer-events: none;
-            filter: brightness(0.55) saturate(1.05) contrast(1.02) blur(0.2px);
+            filter: brightness(1) saturate(1.05) contrast(1.02) blur(0.2px);
         }
         /* board show/hide transitions (fade + slight slide) */
         #board {
@@ -376,6 +449,8 @@
             </div>
         </div>
     </div>
+
+    <!-- operation buttons removed from here to avoid affecting triangle layout -->
 
     <!-- Victory overlay (2048) -->
     <div id="victory-overlay" role="dialog" aria-modal="true">
@@ -445,6 +520,11 @@
             <!-- <button id="add-score-btn" type="button">+1</button> -->
             <button id="reset-score-btn" type="button">Reset</button>
         </div>
+        <!-- Brightness slider for background video -->
+        <div class="brightness-control" title="调整背景亮度">
+            <label for="bg-brightness">背景亮度</label>
+            <input id="bg-brightness" class="brightness-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="背景亮度" />
+        </div>
     </div>
 
     <!-- Collapsible Rules Panel -->
@@ -477,6 +557,39 @@
     </div>
 
     <!-- 引入脚本，build() 会在 DOMContentLoaded 时执行 -->
+    <!-- Operation buttons: fixed hex-like layout (three rows) so they don't affect triangle layout -->
+    <div class="ops-row fixed" aria-hidden="false">
+        <div class="ops-row-row row-top">
+            <button class="op-button" data-op="w" title="向右上 (键 w)">
+                <span>↗</span>
+                <span class="label-sub">w</span>
+            </button>
+            <button class="op-button" data-op="e" title="向左上 (键 e)">
+                <span>↖</span>
+                <span class="label-sub">e</span>
+            </button>
+        </div>
+        <div class="ops-row-row row-mid">
+            <button class="op-button" data-op="a" title="向左下 (键 a)">
+                <span>↙</span>
+                <span class="label-sub">a</span>
+            </button>
+            <button class="op-button" data-op="d" title="向右下 (键 d)">
+                <span>↘</span>
+                <span class="label-sub">d</span>
+            </button>
+        </div>
+        <div class="ops-row-row row-bot">
+            <button class="op-button" data-op="z" title="水平向左 (键 z)">
+                <span>←</span>
+                <span class="label-sub">z</span>
+            </button>
+            <button class="op-button" data-op="x" title="水平向右 (键 x)">
+                <span>→</span>
+                <span class="label-sub">x</span>
+            </button>
+        </div>
+    </div>
     <script src="js.js"></script>
 </body>
 </html>
