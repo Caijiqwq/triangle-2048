@@ -431,6 +431,28 @@
         @media (prefers-reduced-motion: reduce) {
             #bg-video { display: none; }
         }
+        /* Keymap modal styles (theme-aware) */
+        .modal-overlay { position: fixed; inset: 0; display:none; align-items:center; justify-content:center; background: rgba(4,8,16,0.5); z-index:4000; }
+        .modal-card { width: min(540px, 94vw); background: linear-gradient(180deg,#fff,#fbfbfb); border-radius:14px; box-shadow: 0 28px 68px rgba(2,10,30,0.45); overflow:hidden; transform-origin:center; }
+        .modal-header { padding:12px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(0,0,0,0.06); }
+        .modal-body { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+        .modal-footer { padding:12px 16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid rgba(0,0,0,0.06); }
+        .modal-title { margin:0; font-size:16px; }
+        .key-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .key-row label { flex:1; color:#222; }
+        .key-input { width:72px; padding:8px 6px; text-align:center; border-radius:8px; border:1px solid rgba(10,14,20,0.06); font-weight:700; background:linear-gradient(180deg,#fff,#f7f7f7); }
+        .key-input.invalid { border-color:#e74c3c; box-shadow:0 6px 18px rgba(231,76,60,0.06); }
+        .modal-instructions { color:#444; font-size:13px; margin:0 0 6px 0; }
+        .btn-ghost { background:transparent; border:1px solid rgba(0,0,0,0.06); padding:8px 10px; border-radius:8px; cursor:pointer; }
+        .btn-primary { background:#2b8aef; color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; }
+        /* dark theme overrides for modal */
+        .dark-theme .modal-card { background: linear-gradient(180deg, #15171a, #0f1113); box-shadow: 0 28px 68px rgba(0,0,0,0.7); color: #dfe8ff; }
+        .dark-theme .modal-header, .dark-theme .modal-footer { border-color: rgba(255,255,255,0.04); }
+        .dark-theme .key-input { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); color:#e7f0ff; }
+        .dark-theme .modal-instructions { color: #cfdcff; }
+        .dark-theme .key-row label { color: #e6eefb; }
+        .dark-theme .modal-title { color: #f3f8ff; }
+        .dark-theme .btn-ghost { border-color: rgba(255,255,255,0.06); color: #e6eefb; }
     </style>
 </head>
     <body>
@@ -471,6 +493,29 @@
         </div>
     </div>
 
+    </div>
+
+    <!-- Key mapping modal (outside #board so layout unaffected) -->
+    <div id="keymap-overlay" class="modal-overlay" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="keymap-title">
+            <div class="modal-header">
+                <h3 id="keymap-title" class="modal-title">自定义操作按键</h3>
+                <button id="keymap-close" aria-label="关闭" class="btn-ghost">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-instructions">点击下方任意输入框，然后直接按下你想要绑定的键（单字符）。相同键不能重复绑定。保存会写入本地存储。</p>
+                <div class="key-row"><label>向右上 (默认 w)</label><input id="km-w" data-op="w" class="key-input" maxlength="1" /></div>
+                <div class="key-row"><label>向左上 (默认 e)</label><input id="km-e" data-op="e" class="key-input" maxlength="1" /></div>
+                <div class="key-row"><label>向左下 (默认 a)</label><input id="km-a" data-op="a" class="key-input" maxlength="1" /></div>
+                <div class="key-row"><label>向右下 (默认 d)</label><input id="km-d" data-op="d" class="key-input" maxlength="1" /></div>
+                <div class="key-row"><label>水平向左 (默认 z)</label><input id="km-z" data-op="z" class="key-input" maxlength="1" /></div>
+                <div class="key-row"><label>水平向右 (默认 x)</label><input id="km-x" data-op="x" class="key-input" maxlength="1" /></div>
+            </div>
+            <div class="modal-footer">
+                <button id="km-reset" class="btn-ghost" type="button">重置默认</button>
+                <button id="km-save" class="btn-primary" type="button">保存</button>
+            </div>
+        </div>
     </div>
 
     <!-- Score panel -->
@@ -524,6 +569,10 @@
         <div class="brightness-control" title="调整背景亮度">
             <label for="bg-brightness">背景亮度</label>
             <input id="bg-brightness" class="brightness-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="背景亮度" />
+        </div>
+        <!-- Open keymap modal button -->
+        <div style="display:flex;justify-content:center;">
+            <button id="open-keymap" class="btn-ghost" type="button" style="width:100%;margin-top:6px;">自定义按键</button>
         </div>
     </div>
 

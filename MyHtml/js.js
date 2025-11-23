@@ -7,6 +7,10 @@ const indexRight=[9,4,10,11,1,5,6,12,13,0,2,3,7,8,14,15];
 let colorArray = ['#c5beb6ff','#e2ca9eff','#F2B179','#F59563','#F67C5F','#F65E3B','#EDCF72','#EDCC61','#b89a37ff','#806611ff','#abe91aff'];
 // 深色主题用的调色板（偏冷、低饱和度，保持可读性）
 let colorArrayDark = ['#2b2b2b','#3a3a3a','#5a4b3a','#6a4b3a','#7a4b3a','#8b4b3a','#4a3a2a','#564427','#6b5a2a','#4f3e1b','#3c4a2b'];
+// key mapping global (defaults)
+const KEYMAP_KEY = 'tri2048_keymap';
+const DEFAULT_KEYMAP = { w: 'w', e: 'e', a: 'a', d: 'd', z: 'z', x: 'x' };
+let keyMap = Object.assign({}, DEFAULT_KEYMAP);
 // markers for animations
 let spawnMarkersData = new Array(16).fill(false);
 let mergeMarkersData = new Array(16).fill(false);
@@ -1184,6 +1188,101 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) { /* ignore */ }
     loadBrightnessPref();
+    // --- Key mapping: load/save, UI and modal bindings ---
+    function loadKeyMapFromStorage() {
+        try {
+            const v = localStorage.getItem(KEYMAP_KEY);
+            if (v) {
+                const parsed = JSON.parse(v);
+                for (const k of Object.keys(DEFAULT_KEYMAP)) {
+                    if (parsed && typeof parsed[k] === 'string' && parsed[k].length > 0) keyMap[k] = parsed[k].toLowerCase();
+                    else keyMap[k] = DEFAULT_KEYMAP[k];
+                }
+            } else {
+                keyMap = Object.assign({}, DEFAULT_KEYMAP);
+            }
+        } catch (e) { keyMap = Object.assign({}, DEFAULT_KEYMAP); }
+    }
+    function saveKeyMapToStorage() {
+        try { localStorage.setItem(KEYMAP_KEY, JSON.stringify(keyMap)); } catch (e) { /* ignore */ }
+    }
+    function applyKeyMapToUI() {
+        try {
+            const inputs = document.querySelectorAll('.key-input');
+            inputs.forEach(inp => {
+                const op = inp.getAttribute('data-op');
+                if (op && keyMap[op]) inp.value = keyMap[op];
+            });
+            // update op button titles to show mapped key
+            const opButtons = document.querySelectorAll('.op-button');
+            opButtons.forEach(btn => {
+                const op = btn.getAttribute('data-op');
+                if (!op) return;
+                const base = btn.getAttribute('title') || '';
+                const text = base.split(' (键')[0];
+                btn.setAttribute('title', text + ' (键 ' + (keyMap[op] || '') + ')');
+            });
+        } catch (e) { /* ignore */ }
+    }
+    // modal open/close and input capture
+    try {
+        loadKeyMapFromStorage();
+        applyKeyMapToUI();
+        const overlay = document.getElementById('keymap-overlay');
+        const openBtn = document.getElementById('open-keymap');
+        const closeBtn = document.getElementById('keymap-close');
+        const saveBtn = document.getElementById('km-save');
+        const resetBtn = document.getElementById('km-reset');
+        const keyInputs = document.querySelectorAll('.key-input');
+
+        function openKeymap() {
+            if (!overlay) return;
+            overlay.style.display = 'flex';
+            overlay.setAttribute('aria-hidden', 'false');
+            applyKeyMapToUI();
+            // focus first input
+            setTimeout(() => { const f = document.querySelector('.key-input'); if (f) f.focus(); }, 60);
+        }
+        function closeKeymap() {
+            if (!overlay) return;
+            overlay.style.display = 'none';
+            overlay.setAttribute('aria-hidden', 'true');
+            if (openBtn) openBtn.focus();
+        }
+
+        if (openBtn) openBtn.addEventListener('click', (e) => { e.preventDefault(); openKeymap(); });
+        if (closeBtn) closeBtn.addEventListener('click', (e) => { e.preventDefault(); closeKeymap(); });
+        if (overlay) overlay.addEventListener('click', (ev) => { if (ev.target === overlay) closeKeymap(); });
+        document.addEventListener('keydown', (ev) => { if ((ev.key === 'Escape' || ev.key === 'Esc') && overlay && overlay.getAttribute('aria-hidden') === 'false') closeKeymap(); });
+
+        keyInputs.forEach(inp => {
+            // when focused, capture keydown and set mapping
+            inp.addEventListener('keydown', (ev) => {
+                ev.preventDefault(); ev.stopPropagation();
+                const raw = String(ev.key || '').toLowerCase();
+                if (!raw || raw.length === 0) return;
+                const ch = raw.length > 1 ? raw : raw; // allow single char keys; special keys will be raw string
+                const op = inp.getAttribute('data-op');
+                // check duplicates
+                let conflict = false;
+                for (const k in keyMap) {
+                    if (k === op) continue;
+                    if (String(keyMap[k]).toLowerCase() === ch) { conflict = true; break; }
+                }
+                if (conflict) {
+                    inp.classList.add('invalid');
+                    setTimeout(() => inp.classList.remove('invalid'), 700);
+                    return;
+                }
+                // accept
+                inp.value = ch;
+                keyMap[op] = ch;
+            });
+        });
+
+        if (saveBtn) saveBtn.addEventListener('click', () => { saveKeyMapToStorage(); applyKeyMapToUI(); closeKeymap(); });
+        if (resetBtn) resetBtn.addEventListener('click', () => { keyMap = Object.assign({}, DEFAULT_KEYMAP); saveKeyMapToStorage(); applyKeyMapToUI(); });
+    } catch (e) { /* ignore keymap setup errors */ }
     // Operation buttons binding: click a button to execute that operation and flash the button
     try {
         const opButtons = document.querySelectorAll('.op-button');
@@ -1209,23 +1308,34 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 });
 
-document.addEventListener('keydown', function(event){
-    if (GAME_OVER) return; // ignore input when game over
-    dataUpdate(event.key);
-    build();
-    // after build, check if game ended
-    checkGameState();
-    // after build check victory condition
-    checkVictory();
-});
-
-// Flash corresponding op button on keyboard press (visual feedback)
+// single keyboard handler that respects custom key mapping
 document.addEventListener('keydown', function(ev){
     try {
-        const btn = document.querySelector('.op-button[data-op="' + ev.key + '"]');
-        if (btn) {
-            btn.classList.add('flash');
-            setTimeout(() => btn.classList.remove('flash'), 420);
+        // ignore when game over
+        if (GAME_OVER) return;
+        // if modal open or input focused, do not process as game input
+        const overlay = document.getElementById('keymap-overlay');
+        if (overlay && overlay.getAttribute('aria-hidden') === 'false') return;
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+        const pressed = String(ev.key || '').toLowerCase();
+        // find op by mapping
+        let opFound = null;
+        for (const op in keyMap) {
+            if (String(keyMap[op] || '').toLowerCase() === pressed) { opFound = op; break; }
         }
+        if (!opFound) return;
+        dataUpdate(opFound);
+        build();
+        checkGameState();
+        checkVictory();
+        // flash corresponding op button
+        try {
+            const btn = document.querySelector('.op-button[data-op="' + opFound + '"]');
+            if (btn) {
+                btn.classList.add('flash');
+                setTimeout(() => btn.classList.remove('flash'), 420);
+            }
+        } catch (e) { /* ignore */ }
     } catch (e) { /* ignore */ }
 });
